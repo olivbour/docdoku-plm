@@ -200,14 +200,33 @@ public class PartsResource {
                 .entity(queryResult).build();
     }
 
+    @POST
+    @Path("query-export")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces("application/vnd.ms-excel")
+    public Response exportCustomQuery(@Context HttpServletRequest request,
+                                      @PathParam("workspaceId") String workspaceId,
+                                      @QueryParam("export") String exportType,
+                                      QueryDTO queryDTO)
+            throws BaselineNotFoundException, ProductInstanceMasterNotFoundException, EntityConstraintException, WorkspaceNotFoundException, UserNotFoundException, NotAllowedException, PartMasterNotFoundException, ConfigurationItemNotFoundException, UserNotActiveException {
+
+        Query query = mapper.map(queryDTO, Query.class);
+        User user = userManager.whoAmI(workspaceId);
+        return export(workspaceId, query, request, exportType, new Locale(user.getLanguage()));
+    }
+
     @GET
     @Path("queries/{queryId}/format/{export}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/vnd.ms-excel")
     public Response exportCustomQuery(@Context HttpServletRequest request, @PathParam("workspaceId") String workspaceId, @PathParam("queryId") String queryId, @PathParam("export") String exportType) throws EntityNotFoundException, UserNotActiveException, AccessRightException, CreationException, QueryAlreadyExistsException, EntityConstraintException, NotAllowedException {
         User user = userManager.checkWorkspaceReadAccess(workspaceId);
-        Locale locale = new Locale(user != null?user.getLanguage():"en");
         Query query = productService.loadQuery(workspaceId, Integer.valueOf(queryId));
+        return export(workspaceId, query, request, exportType, new Locale(user.getLanguage()));
+    }
+
+    private Response export(String workspaceId, Query query, HttpServletRequest request, String exportType, Locale locale)
+            throws BaselineNotFoundException, ProductInstanceMasterNotFoundException, EntityConstraintException, WorkspaceNotFoundException, UserNotFoundException, NotAllowedException, PartMasterNotFoundException, ConfigurationItemNotFoundException, UserNotActiveException {
         QueryResult queryResult = getQueryResult(workspaceId, query, exportType);
         String url = request.getRequestURL().toString();
         String baseURL = url.substring(0, url.length() - request.getRequestURI().length()) + request.getContextPath();

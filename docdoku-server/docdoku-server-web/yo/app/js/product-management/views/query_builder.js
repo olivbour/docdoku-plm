@@ -24,7 +24,8 @@ define([
             'click .clear-order-by-badge': 'onClearOrderBy',
             'click .clear-group-by-badge': 'onClearGroupBy',
             'click .clear-context-badge': 'onClearContext',
-            'click .export-excel-button': 'onExport'
+            'click .export-existing-query-excel-button': 'doExportExistingQuery',
+            'click .export-excel-button': 'doExport'
         },
 
         delimiter: ',',
@@ -68,7 +69,7 @@ define([
             var $select = this.$selectQuery;
             var $existingQueriesArea = this.$existingQueriesArea;
             var $deleteQueryButton = this.$deleteQueryButton;
-            var $exportQueryButton = this.$exportQueryButton;
+            var $exportExistingQueryButton = this.$exportExistingQueryButton;
             var selected = this.$selectQuery.val();
             $select.empty();
             $select.append('<option value=""></option>');
@@ -97,7 +98,7 @@ define([
                 } else {
                     $existingQueriesArea.show();
                     $deleteQueryButton.toggle($select.val() !== '');
-                    $exportQueryButton.toggle($select.val() !== '');
+                    $exportExistingQueryButton.toggle($select.val() !== '');
                 }
             });
 
@@ -117,7 +118,7 @@ define([
             this.onClearContext();
 
             this.$deleteQueryButton.hide();
-            this.$exportQueryButton.hide();
+            this.$exportExistingQueryButton.hide();
         },
 
         onSelectQueryChange: function (e) {
@@ -138,7 +139,7 @@ define([
                         if (query.queryRule && query.queryRule.rules) {
                             var rules = query.queryRule.rules;
                             for (var i = 0; i < rules.length; i++) {
-                                if (rules[i].values.length == 1) {
+                                if (rules[i].values.length === 1) {
                                     rules[i].value = rules[i].values[0];
                                 } else {
                                     rules[i].value = rules[i].values;
@@ -174,7 +175,7 @@ define([
                 this.$where.queryBuilder('reset');
             }
             this.$deleteQueryButton.toggle(e.target.value !== '');
-            this.$exportQueryButton.toggle(e.target.value !== '');
+            this.$exportExistingQueryButton.toggle(e.target.value !== '');
         },
 
         deleteSelectedQuery: function () {
@@ -463,6 +464,7 @@ define([
             this.$selectQuery = this.$('select.query-list');
             this.$deleteQueryButton = this.$('.delete-selected-query');
             this.$exportQueryButton = this.$('.export-excel-button');
+            this.$exportExistingQueryButton = this.$('.export-existing-query-excel-button');
             this.$searchButton = this.$('.search-button');
             this.$context = this.$('#context');
             this.$existingQueriesArea = this.$('.choose-existing-request-area');
@@ -552,8 +554,7 @@ define([
 
         },
 
-        doSearch: function (save) {
-            var self = this;
+        getQueryData : function(save){
 
             var isValid = this.$where.queryBuilder('validate');
             var rules = this.$where.queryBuilder('getRules');
@@ -561,17 +562,17 @@ define([
 
             var selectsSize = this.$select[0].selectize.items.length;
 
-            if (selectsSize && (isValid || !rules.condition && !rules.rules)) {
+            if(selectsSize && (isValid || !rules.condition && !rules.rules)) {
 
                 var context = this.$context[0].selectize.getValue().length ? this.$context[0].selectize.getValue().split(this.delimiter) : [];
 
                 var contextToSend = [];
-                _.each(context, function (ctx) {
+                _.each(context, function(ctx){
                     var productAndSerial = ctx.split('/');
                     contextToSend.push({
-                        configurationItemId: productAndSerial[0],
-                        serialNumber: productAndSerial[1],
-                        workspaceId: App.config.workspaceId
+                        configurationItemId:productAndSerial[0],
+                        serialNumber:productAndSerial[1],
+                        workspaceId:App.config.workspaceId
                     });
                 });
 
@@ -579,8 +580,8 @@ define([
                 var orderByList = this.$orderBy[0].selectize.getValue().length ? this.$orderBy[0].selectize.getValue().split(this.delimiter) : [];
                 var groupByList = this.$groupBy[0].selectize.getValue().length ? this.$groupBy[0].selectize.getValue().split(this.delimiter) : [];
 
-                var queryData = {
-                    contexts: contextToSend,
+                return {
+                    contexts:contextToSend,
                     selects: selectList,
                     orderByList: orderByList,
                     groupedByList: groupByList,
@@ -588,13 +589,62 @@ define([
                     name: save || ''
                 };
 
+            }
+        },
+
+        doExport: function(){
+
+            var queryData = this.getQueryData(false);
+
+            if(queryData){
+                var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/query-export?export=XLS' ;
+
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    var a;
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        a = document.createElement('a');
+                        a.href = window.URL.createObjectURL(xhr.response);
+                        a.download = 'export.xls';
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                    }
+                };
+                xhr.open('POST', url);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.responseType = 'blob';
+                xhr.send(JSON.stringify(queryData));
+            }
+
+        },
+
+        doExportExistingQuery: function(){
+            var queryId = this.$selectQuery.val();
+            var query = _.findWhere(this.queries, {id : parseInt(queryId,10)});
+            var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries/'+query.id+'/format/XLS';
+            var link = document.createElement('a');
+            link.href = url;
+
+            var event = document.createEvent('MouseEvents');
+            event.initMouseEvent(
+                'click', true, false, window, 0, 0, 0, 0, 0,
+                false, false, false, false, 0, null
+            );
+            link.dispatchEvent(event);
+        },
+
+        doSearch: function (save) {
+            var queryData = this.getQueryData(save);
+            var self = this;
+
+            if(queryData){
+
                 this.$searchButton.button('loading');
+                var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries' ;
 
-
-                var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries';
-
-                if (save) {
-                    url += '?save=true';
+                if(save){
+                    url+= '?save=true';
                 }
 
                 $.ajax({
@@ -604,10 +654,10 @@ define([
                     contentType: 'application/json',
                     success: function (data) {
                         var dataToTransmit = {
-                            queryFilters: self.queryBuilderFilters,
-                            queryData: queryData,
-                            queryResponse: data,
-                            queryColumnNameMapping: self.selectizeAvailableOptions
+                            queryFilters : self.queryBuilderFilters,
+                            queryData:queryData,
+                            queryResponse:data,
+                            queryColumnNameMapping:self.selectizeAvailableOptions
                         };
                         self.$searchButton.button('reset');
                         self.fetchQueries(save);
