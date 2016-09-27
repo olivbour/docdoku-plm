@@ -630,7 +630,7 @@ define([
                     if (rules[i].value === undefined) {
                         this.sendValuesInArray(rules[i].rules);
                     } else {
-                        if (rules[i].value instanceof Array) {
+                        if (rules[i].values &&  rules[i].value instanceof Array) {
                             rules[i].values = rules[i].value;
                         } else {
                             rules[i].values = [rules[i].value];
