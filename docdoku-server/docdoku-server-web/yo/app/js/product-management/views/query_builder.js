@@ -9,21 +9,21 @@ define([
     'collections/configuration_items',
     'common-objects/collections/product_instances',
     'common-objects/views/prompt'
-], function (Backbone, Mustache, template,  selectize, queryBuilderOptions, AlertView, ConfigurationItemCollection, ProductInstances, PromptView) {
+], function (Backbone, Mustache, template, selectize, queryBuilderOptions, AlertView, ConfigurationItemCollection, ProductInstances, PromptView) {
     'use strict';
     var QueryBuilderView = Backbone.View.extend({
 
         events: {
             'click .search-button': 'onSearch',
             'click .save-button': 'onSave',
-            'change select.query-list':'onSelectQueryChange',
-            'click .delete-selected-query':'deleteSelectedQuery',
-            'click .reset-button' : 'onReset',
+            'change select.query-list': 'onSelectQueryChange',
+            'click .delete-selected-query': 'deleteSelectedQuery',
+            'click .reset-button': 'onReset',
             'click .clear-select-badge': 'onClearSelect',
             'click .clear-where-badge': 'onClearWhere',
             'click .clear-order-by-badge': 'onClearOrderBy',
             'click .clear-group-by-badge': 'onClearGroupBy',
-            'click .clear-context-badge' : 'onClearContext',
+            'click .clear-context-badge': 'onClearContext',
             'click .export-excel-button': 'onExport'
         },
 
@@ -33,12 +33,12 @@ define([
 
             this.selectizeAvailableOptions = _.clone(queryBuilderOptions.fields);
 
-            this.queryBuilderFilters =  _.clone(queryBuilderOptions.filters);
+            this.queryBuilderFilters = _.clone(queryBuilderOptions.filters);
 
             this.selectizeOptions = {
-                plugins: ['remove_button','drag_drop', 'optgroup_columns'],
+                plugins: ['remove_button', 'drag_drop', 'optgroup_columns'],
                 persist: true,
-                delimiter:this.delimiter,
+                delimiter: this.delimiter,
                 optgroupField: 'group',
                 optgroupLabelField: 'name',
                 optgroupValueField: 'id',
@@ -48,10 +48,10 @@ define([
                 searchField: ['name'],
                 options: null,
                 render: {
-                    item: function(item, escape) {
+                    item: function (item, escape) {
                         return '<div><span class="name">' + escape(item.name) + '</span></div>';
                     },
-                    option: function(item, escape) {
+                    option: function (item, escape) {
                         return '<div><span class="label">' + escape(item.name) + '</span></div>';
                     }
                 }
@@ -66,17 +66,20 @@ define([
             var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries';
 
             var $select = this.$selectQuery;
+            var $existingQueriesArea = this.$existingQueriesArea;
+            var $deleteQueryButton = this.$deleteQueryButton;
+            var $exportQueryButton = this.$exportQueryButton;
             var selected = this.$selectQuery.val();
             $select.empty();
             $select.append('<option value=""></option>');
 
-            var fillOption = function(q){
+            var fillOption = function (q) {
                 queries.push(q);
-                $select.append('<option value="'+ q.id+'">'+ q.name+'</option>');
+                $select.append('<option value="' + q.id + '">' + q.name + '</option>');
             };
 
-            return $.getJSON(url,function(data){
-                data.sort(function(a,b){
+            return $.getJSON(url, function (data) {
+                data.sort(function (a, b) {
                     return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
                 });
                 data.map(fillOption);
@@ -88,11 +91,19 @@ define([
                     selected = selectedQuery.id;
                 }
                 $select.val(selected);
+            }).then(function () {
+                if (!queries.length) {
+                    $existingQueriesArea.hide();
+                } else {
+                    $existingQueriesArea.show();
+                    $deleteQueryButton.toggle($select.val() !== '');
+                    $exportQueryButton.toggle($select.val() !== '');
+                }
             });
 
         },
 
-        clear:function(){
+        clear: function () {
             var selectSelectize = this.$select[0].selectize;
             var orderBySelectize = this.$orderBy[0].selectize;
             var groupBySelectize = this.$groupBy[0].selectize;
@@ -109,7 +120,7 @@ define([
             this.$exportQueryButton.hide();
         },
 
-        onSelectQueryChange:function(e){
+        onSelectQueryChange: function (e) {
 
             this.clear();
 
@@ -118,15 +129,15 @@ define([
             var groupBySelectize = this.$groupBy[0].selectize;
             var contextSelectize = this.$context[0].selectize;
 
-            if(e.target.value){
-                var query = _.findWhere(this.queries,{id: parseInt(e.target.value,10)});
+            if (e.target.value) {
+                var query = _.findWhere(this.queries, {id: parseInt(e.target.value, 10)});
                 if (query.queryRule) {
                     if (query.queryRule.rules.length === 0) {
                         this.$where.queryBuilder('reset');
                     } else {
                         if (query.queryRule && query.queryRule.rules) {
                             var rules = query.queryRule.rules;
-                            for (var i=0; i<rules.length; i++) {
+                            for (var i = 0; i < rules.length; i++) {
                                 if (rules[i].values.length == 1) {
                                     rules[i].value = rules[i].values[0];
                                 } else {
@@ -139,42 +150,42 @@ define([
                     }
                 }
 
-                _.each(query.contexts, function(value){
-                    if(!value.serialNumber){
+                _.each(query.contexts, function (value) {
+                    if (!value.serialNumber) {
                         contextSelectize.addItem(value.configurationItemId, true);
                     } else {
-                        contextSelectize.addItem(value.configurationItemId +'/'+value.serialNumber, true);
+                        contextSelectize.addItem(value.configurationItemId + '/' + value.serialNumber, true);
                     }
                 });
 
-                _.each(query.selects,function(value){
+                _.each(query.selects, function (value) {
                     selectSelectize.addItem(value);
                 });
 
-                _.each(query.orderByList,function(value){
+                _.each(query.orderByList, function (value) {
                     orderBySelectize.addItem(value, true);
                 });
 
-                _.each(query.groupedByList,function(value){
+                _.each(query.groupedByList, function (value) {
                     groupBySelectize.addItem(value, true);
                 });
 
-            }else{
+            } else {
                 this.$where.queryBuilder('reset');
             }
             this.$deleteQueryButton.toggle(e.target.value !== '');
             this.$exportQueryButton.toggle(e.target.value !== '');
         },
 
-        deleteSelectedQuery:function(){
+        deleteSelectedQuery: function () {
             var self = this;
             var id = this.$selectQuery.val();
 
-            if(id){
+            if (id) {
                 bootbox.confirm(App.config.i18n.DELETE_QUERY_QUESTION, function (result) {
                     if (result) {
 
-                        var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries/'+id;
+                        var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries/' + id;
                         $.ajax({
                             type: 'DELETE',
                             url: url,
@@ -195,7 +206,7 @@ define([
             }
         },
 
-        fetchPartIterationsAttributes : function(){
+        fetchPartIterationsAttributes: function () {
             var self = this;
             var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/attributes/part-iterations';
 
@@ -203,52 +214,52 @@ define([
                 type: 'GET',
                 url: url,
                 success: function (data) {
-                    _.each(data, function(attribute){
+                    _.each(data, function (attribute) {
                         var attributeType = queryBuilderOptions.types[attribute.type];
-                        var group = _.findWhere(queryBuilderOptions.groups, {id : 'attr-'+attribute.type});
+                        var group = _.findWhere(queryBuilderOptions.groups, {id: 'attr-' + attribute.type});
                         var filter = {
-                            id: 'attr-'+attribute.type+'.'+attribute.name,
+                            id: 'attr-' + attribute.type + '.' + attribute.name,
                             label: attribute.name,
                             type: attributeType,
                             realType: attributeType,
                             optgroup: group.name
                         };
-                        if(attributeType === 'date'){
+                        if (attributeType === 'date') {
                             filter.operators = queryBuilderOptions.dateOperators;
                             filter.input = queryBuilderOptions.dateInput;
-                        } else if (attributeType === 'string'){
+                        } else if (attributeType === 'string') {
                             filter.operators = queryBuilderOptions.stringOperators;
-                        } else if (attributeType === 'lov'){
+                        } else if (attributeType === 'lov') {
                             filter.type = 'string';
                             filter.operators = queryBuilderOptions.lovOperators;
                             filter.input = 'select';
                             var values = [];
                             var index = 0;
-                            _.each(attribute.lovItems, function(item){
+                            _.each(attribute.lovItems, function (item) {
                                 var value = {};
                                 value[index] = item.name;
                                 values.push(value);
-                                index ++;
+                                index++;
                             });
                             filter.values = values;
-                        } else if(attributeType === 'boolean'){
+                        } else if (attributeType === 'boolean') {
                             filter.type = 'boolean';
                             filter.operators = queryBuilderOptions.booleanOperators;
                             filter.input = 'select';
                             filter.values = [
-                                {'true' : App.config.i18n.TRUE},
-                                {'false' : App.config.i18n.FALSE}
+                                {'true': App.config.i18n.TRUE},
+                                {'false': App.config.i18n.FALSE}
                             ];
-                        } else if(attributeType === 'double'){
+                        } else if (attributeType === 'double') {
                             filter.operators = queryBuilderOptions.numberOperators;
                         }
 
                         self.queryBuilderFilters.push(filter);
 
                         self.selectizeAvailableOptions.push({
-                            name:attribute.name,
-                            value:'attr-'+attribute.type+'.'+attribute.name,
-                            group:'attr-'+attribute.type
+                            name: attribute.name,
+                            value: 'attr-' + attribute.type + '.' + attribute.name,
+                            group: 'attr-' + attribute.type
                         });
 
                     });
@@ -259,7 +270,7 @@ define([
             });
         },
 
-        fetchPathDataAttributes : function(){
+        fetchPathDataAttributes: function () {
             var self = this;
             var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/attributes/path-data';
 
@@ -267,11 +278,11 @@ define([
                 type: 'GET',
                 url: url,
                 success: function (data) {
-                    _.each(data, function(attribute){
+                    _.each(data, function (attribute) {
                         self.selectizeAvailableOptions.push({
-                            name:attribute.name,
-                            value:'pd-attr-'+attribute.type+'.'+attribute.name,
-                            group:'pd-attrs'
+                            name: attribute.name,
+                            value: 'pd-attr-' + attribute.type + '.' + attribute.name,
+                            group: 'pd-attrs'
                         });
                     });
                 },
@@ -281,7 +292,7 @@ define([
             });
         },
 
-        fetchTags : function(){
+        fetchTags: function () {
             var self = this;
             var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/tags';
 
@@ -295,11 +306,11 @@ define([
                         label: 'TAG',
                         type: 'string',
                         realType: 'string',
-                        optgroup: _.findWhere(queryBuilderOptions.groups, {id : 'pr'}).name
+                        optgroup: _.findWhere(queryBuilderOptions.groups, {id: 'pr'}).name
                     };
 
                     var values = [];
-                    _.each(tags, function(tag){
+                    _.each(tags, function (tag) {
                         var value = {};
                         value[tag.id] = tag.label;
                         values.push(value);
@@ -329,24 +340,24 @@ define([
             return this;
         },
 
-        destroy:function(){
+        destroy: function () {
             this.$where.queryBuilder('destroy');
         },
 
-        initWhere:function(){
+        initWhere: function () {
             this.$where.queryBuilder({
                 filters: this.queryBuilderFilters,
-                icons:{
-                    'add_group' : 'fa fa-plus-circle',
-                    'remove_group' : 'fa fa-times-circle',
-                    'error' : 'fa fa-exclamation',
-                    'remove_rule' : 'fa fa-remove',
-                    'add_rule' : 'fa fa-plus'
+                icons: {
+                    'add_group': 'fa fa-plus-circle',
+                    'remove_group': 'fa fa-times-circle',
+                    'error': 'fa fa-exclamation',
+                    'remove_rule': 'fa fa-remove',
+                    'add_rule': 'fa fa-plus'
                 }
             });
         },
 
-        fillSelectizes: function(){
+        fillSelectizes: function () {
             var self = this;
 
             this.fillContext();
@@ -354,7 +365,7 @@ define([
             this.$select.selectize(this.selectizeOptions);
             this.$select[0].selectize.addOption(this.selectizeAvailableOptions);
 
-            this.$select[0].selectize.on('item_add', function(value){
+            this.$select[0].selectize.on('item_add', function (value) {
                 var data = _.findWhere(self.$select[0].selectize.options, {value: value});
 
                 self.$groupBy[0].selectize.addOption(data);
@@ -364,7 +375,7 @@ define([
                 self.$orderBy[0].selectize.refreshOptions(false);
             });
 
-            this.$select[0].selectize.on('item_remove', function(value){
+            this.$select[0].selectize.on('item_remove', function (value) {
                 self.$groupBy[0].selectize.removeOption(value);
                 self.$groupBy[0].selectize.refreshOptions(false);
 
@@ -376,7 +387,7 @@ define([
             this.$groupBy.selectize(this.selectizeOptions);
         },
 
-        fillContext: function(){
+        fillContext: function () {
             var contextOption = _.clone(this.selectizeOptions);
             contextOption.group = [{id: 'pi', name: App.config.i18n.QUERY_GROUP_PRODUCT}];
             this.$context.selectize(contextOption);
@@ -385,35 +396,35 @@ define([
             var contextSelectize = this.$context[0].selectize;
 
             var productCollection = new ConfigurationItemCollection();
-            productCollection.fetch().success(function(productsList){
-                _.each(productsList, function(product){
+            productCollection.fetch().success(function (productsList) {
+                _.each(productsList, function (product) {
                     self.$context[0].selectize.addOption({
-                        name:product.id,
-                        value:product.id,
-                        group:'pi'
+                        name: product.id,
+                        value: product.id,
+                        group: 'pi'
                     });
                 });
-            }).error(function(){
+            }).error(function () {
                 self.$('#alerts').append(new AlertView({
                     type: 'warning',
                     message: App.config.i18n.QUERY_CONTEXT_ERROR
                 }).render().$el);
             });
 
-            contextSelectize.on('item_add', function(){
+            contextSelectize.on('item_add', function () {
                 self.$select[0].selectize.addOption(queryBuilderOptions.contextFields);
                 self.$select[0].selectize.refreshOptions(false);
 
-                if(contextSelectize.items.length === 1) {
-                    _.each(queryBuilderOptions.contextFields, function(field){
+                if (contextSelectize.items.length === 1) {
+                    _.each(queryBuilderOptions.contextFields, function (field) {
                         self.selectizeAvailableOptions.push(field);
                     });
                 }
             });
 
-            contextSelectize.on('item_remove', function(){
+            contextSelectize.on('item_remove', function () {
 
-                if(contextSelectize.items.length === 0) {
+                if (contextSelectize.items.length === 0) {
                     _.each(queryBuilderOptions.contextFields, function (field) {
                         self.$select[0].selectize.removeOption(field.value);
                         self.$select[0].selectize.refreshOptions(false);
@@ -428,14 +439,14 @@ define([
             });
 
 
-            new ProductInstances().fetch().success(function(productInstances){
-                _.each(productInstances, function(pi){
-                    contextSelectize.addOptionGroup(pi.configurationItemId,{name: pi.configurationItemId});
+            new ProductInstances().fetch().success(function (productInstances) {
+                _.each(productInstances, function (pi) {
+                    contextSelectize.addOptionGroup(pi.configurationItemId, {name: pi.configurationItemId});
 
                     contextSelectize.addOption({
-                        name:pi.serialNumber,
-                        value:pi.configurationItemId +'/'+pi.serialNumber,
-                        group:pi.configurationItemId
+                        name: pi.serialNumber,
+                        value: pi.configurationItemId + '/' + pi.serialNumber,
+                        group: pi.configurationItemId
                     });
 
                 });
@@ -454,9 +465,10 @@ define([
             this.$exportQueryButton = this.$('.export-excel-button');
             this.$searchButton = this.$('.search-button');
             this.$context = this.$('#context');
+            this.$existingQueriesArea = this.$('.choose-existing-request-area');
         },
 
-        onClearSelect: function(){
+        onClearSelect: function () {
             var selectSelectize = this.$select[0].selectize;
             var orderBySelectize = this.$orderBy[0].selectize;
             var groupBySelectize = this.$groupBy[0].selectize;
@@ -468,21 +480,21 @@ define([
             groupBySelectize.clearOptions();
         },
 
-        onClearWhere: function(){
+        onClearWhere: function () {
             this.$where.queryBuilder('reset');
         },
 
-        onClearOrderBy: function(){
+        onClearOrderBy: function () {
             var orderBySelectize = this.$orderBy[0].selectize;
             orderBySelectize.clear();
         },
 
-        onClearGroupBy: function(){
+        onClearGroupBy: function () {
             var groupBySelectize = this.$groupBy[0].selectize;
             groupBySelectize.clear();
         },
 
-        onClearContext:function(){
+        onClearContext: function () {
             var contextSelectize = this.$context[0].selectize;
             contextSelectize.clear();
 
@@ -499,16 +511,16 @@ define([
             });
         },
 
-        onReset: function(){
+        onReset: function () {
             this.clear();
             this.$where.queryBuilder('reset');
             this.$selectQuery.val('');
         },
 
-        onExport: function(){
+        onExport: function () {
             var queryId = this.$selectQuery.val();
-            var query = _.findWhere(this.queries, {id : parseInt(queryId,10)});
-            var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries/'+query.id+'/format/XLS';
+            var query = _.findWhere(this.queries, {id: parseInt(queryId, 10)});
+            var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries/' + query.id + '/format/XLS';
             var link = document.createElement('a');
             link.href = url;
 
@@ -520,11 +532,11 @@ define([
             link.dispatchEvent(event);
         },
 
-        onSearch:function(){
+        onSearch: function () {
             this.doSearch();
         },
 
-        onSave : function(){
+        onSave: function () {
 
             var self = this;
 
@@ -540,7 +552,7 @@ define([
 
         },
 
-        doSearch : function(save){
+        doSearch: function (save) {
             var self = this;
 
             var isValid = this.$where.queryBuilder('validate');
@@ -549,17 +561,17 @@ define([
 
             var selectsSize = this.$select[0].selectize.items.length;
 
-            if(selectsSize && (isValid || !rules.condition && !rules.rules)) {
+            if (selectsSize && (isValid || !rules.condition && !rules.rules)) {
 
                 var context = this.$context[0].selectize.getValue().length ? this.$context[0].selectize.getValue().split(this.delimiter) : [];
 
                 var contextToSend = [];
-                _.each(context, function(ctx){
+                _.each(context, function (ctx) {
                     var productAndSerial = ctx.split('/');
                     contextToSend.push({
-                        configurationItemId:productAndSerial[0],
-                        serialNumber:productAndSerial[1],
-                        workspaceId:App.config.workspaceId
+                        configurationItemId: productAndSerial[0],
+                        serialNumber: productAndSerial[1],
+                        workspaceId: App.config.workspaceId
                     });
                 });
 
@@ -568,7 +580,7 @@ define([
                 var groupByList = this.$groupBy[0].selectize.getValue().length ? this.$groupBy[0].selectize.getValue().split(this.delimiter) : [];
 
                 var queryData = {
-                    contexts:contextToSend,
+                    contexts: contextToSend,
                     selects: selectList,
                     orderByList: orderByList,
                     groupedByList: groupByList,
@@ -579,10 +591,10 @@ define([
                 this.$searchButton.button('loading');
 
 
-                var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries' ;
+                var url = App.config.contextPath + '/api/workspaces/' + App.config.workspaceId + '/parts/queries';
 
-                if(save){
-                    url+= '?save=true';
+                if (save) {
+                    url += '?save=true';
                 }
 
                 $.ajax({
@@ -592,10 +604,10 @@ define([
                     contentType: 'application/json',
                     success: function (data) {
                         var dataToTransmit = {
-                            queryFilters : self.queryBuilderFilters,
-                            queryData:queryData,
-                            queryResponse:data,
-                            queryColumnNameMapping:self.selectizeAvailableOptions
+                            queryFilters: self.queryBuilderFilters,
+                            queryData: queryData,
+                            queryResponse: data,
+                            queryColumnNameMapping: self.selectizeAvailableOptions
                         };
                         self.$searchButton.button('reset');
                         self.fetchQueries(save);
@@ -612,9 +624,9 @@ define([
             }
         },
 
-        sendValuesInArray : function(rules) {
+        sendValuesInArray: function (rules) {
             if (rules) {
-                for (var i=0; i<rules.length; i++) {
+                for (var i = 0; i < rules.length; i++) {
                     if (rules[i].value === undefined) {
                         this.sendValuesInArray(rules[i].rules);
                     } else {
