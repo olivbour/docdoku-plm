@@ -692,6 +692,7 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
             }
         }
 
+        Collection<Task> runningTasks=null;
         if (pWorkflowModelId != null) {
 
             UserDAO userDAO = new UserDAO(locale, em);
@@ -718,12 +719,10 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
                 }
             }
 
-            Collection<Task> runningTasks = workflow.getRunningTasks();
+            runningTasks = workflow.getRunningTasks();
             for (Task runningTask : runningTasks) {
                 runningTask.start();
             }
-            em.flush();
-            mailer.sendApproval(runningTasks, docR);
         }
 
         docR.setTitle(pTitle);
@@ -752,6 +751,10 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
         docR.setCheckOutDate(now);
         newDoc.setCreationDate(now);
         new DocumentRevisionDAO(locale, em).createDocR(docR);
+
+        if(runningTasks!=null)
+            mailer.sendApproval(runningTasks, docR);
+
         return docR;
     }
 
@@ -1416,6 +1419,7 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
             firstIte.setInstanceAttributes(attrs);
         }
 
+        Collection<Task> runningTasks=null;
         if (pWorkflowModelId != null) {
 
             UserDAO userDAO = new UserDAO(locale, em);
@@ -1442,12 +1446,10 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
                 }
             }
 
-            Collection<Task> runningTasks = workflow.getRunningTasks();
+            runningTasks = workflow.getRunningTasks();
             for (Task runningTask : runningTasks) {
                 runningTask.start();
             }
-            em.flush();
-            mailer.sendApproval(runningTasks, docR);
         }
 
         docR.setTitle(pTitle);
@@ -1482,6 +1484,9 @@ public class DocumentManagerBean implements IDocumentManagerWS, IDocumentManager
         firstIte.setModificationDate(now);
 
         docRDAO.createDocR(docR);
+        if(runningTasks!=null)
+            mailer.sendApproval(runningTasks, docR);
+
         return new DocumentRevision[]{originalDocR, docR};
     }
 

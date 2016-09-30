@@ -205,6 +205,7 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
         pm.setCreationDate(now);
         PartRevision newRevision = pm.createNextRevision(user);
 
+        Collection<Task> runningTasks=null;
         if (pWorkflowModelId != null) {
 
             UserDAO userDAO = new UserDAO(locale, em);
@@ -231,13 +232,10 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
                 }
             }
 
-            Collection<Task> runningTasks = workflow.getRunningTasks();
+            runningTasks = workflow.getRunningTasks();
             for (Task runningTask : runningTasks) {
                 runningTask.start();
             }
-
-            mailer.sendApproval(runningTasks, newRevision);
-
         }
         newRevision.setCheckOutUser(user);
         newRevision.setCheckOutDate(now);
@@ -302,6 +300,10 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
         }
 
         new PartMasterDAO(locale, em).createPartM(pm);
+
+        if(runningTasks!=null)
+            mailer.sendApproval(runningTasks, newRevision);
+
         return pm;
     }
 
@@ -2265,6 +2267,7 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
         }
 
 
+        Collection<Task> runningTasks=null;
         if (pWorkflowModelId != null) {
 
             UserDAO userDAO = new UserDAO(locale, em);
@@ -2291,13 +2294,10 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
                 }
             }
 
-            Collection<Task> runningTasks = workflow.getRunningTasks();
-
+            runningTasks = workflow.getRunningTasks();
             for (Task runningTask : runningTasks) {
                 runningTask.start();
             }
-
-            mailer.sendApproval(runningTasks, partR);
         }
 
         partR.setDescription(pDescription);
@@ -2325,6 +2325,9 @@ public class ProductManagerBean implements IProductManagerWS, IProductManagerLoc
         firstPartI.setModificationDate(now);
 
         partRevisionDAO.createPartR(partR);
+
+        if(runningTasks!=null)
+            mailer.sendApproval(runningTasks, partR);
 
         return partR;
 
