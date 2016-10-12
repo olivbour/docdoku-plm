@@ -34,6 +34,8 @@ define([
                     App.config.workspaceAdmin = _.select(App.config.workspaces.administratedWorkspaces, function (workspace) {
                         return workspace.id === App.config.workspaceId;
                     }).length === 1;
+                    App.config.isReadOnly = _.some(App.config.groups,function(group){return group.readOnly;})
+ +                    && !App.config.workspaceAdmin;
 
                     if(window.localStorage.locale === 'unset'){
                         window.localStorage.locale = user.language || 'en';
