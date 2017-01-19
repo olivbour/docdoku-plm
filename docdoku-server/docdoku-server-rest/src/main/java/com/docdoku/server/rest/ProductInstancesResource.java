@@ -749,7 +749,7 @@ public class ProductInstancesResource {
             throws UserNotFoundException, AccessRightException, UserNotActiveException,
             ProductInstanceMasterNotFoundException, WorkspaceNotFoundException, NotAllowedException,
             PathDataAlreadyExistsException, ConfigurationItemNotFoundException, PartUsageLinkNotFoundException,
-            DocumentRevisionNotFoundException, WorkspaceNotEnabledException {
+            DocumentRevisionNotFoundException, WorkspaceNotEnabledException, PartMasterNotFoundException {
 
         List<InstanceAttributeDTO> instanceAttributeDTOs = pathDataIterationCreationDTO.getInstanceAttributes();
         List<InstanceAttribute> attributes = new ArrayList<>();

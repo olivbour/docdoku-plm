@@ -23,6 +23,8 @@ package com.docdoku.server.dao;
 import com.docdoku.core.exceptions.CreationException;
 import com.docdoku.core.exceptions.PartMasterAlreadyExistsException;
 import com.docdoku.core.exceptions.PartMasterNotFoundException;
+import com.docdoku.core.meta.InstanceAttribute;
+import com.docdoku.core.product.InstancePartNumberAttribute;
 import com.docdoku.core.product.PartMaster;
 import com.docdoku.core.product.PartMasterKey;
 import com.docdoku.core.product.PartRevision;
@@ -63,7 +65,7 @@ public class PartMasterDAO {
         try {
             return em.getReference(PartMaster.class, pKey);
         } catch (EntityNotFoundException pENFEx) {
-            LOGGER.log(Level.FINEST,null,pENFEx);
+            LOGGER.log(Level.FINEST, null, pENFEx);
             throw new PartMasterNotFoundException(mLocale, pKey.getNumber());
         }
     }
@@ -71,7 +73,7 @@ public class PartMasterDAO {
     public void createPartM(PartMaster pPartM) throws PartMasterAlreadyExistsException, CreationException {
         try {
             PartRevision firstRev = pPartM.getLastRevision();
-            if(firstRev!=null && firstRev.getWorkflow()!=null){
+            if (firstRev != null && firstRev.getWorkflow() != null) {
                 WorkflowDAO workflowDAO = new WorkflowDAO(em);
                 workflowDAO.createWorkflow(firstRev.getWorkflow());
             }
@@ -79,32 +81,32 @@ public class PartMasterDAO {
             em.persist(pPartM);
             em.flush();
         } catch (EntityExistsException pEEEx) {
-            LOGGER.log(Level.FINEST,null,pEEEx);
+            LOGGER.log(Level.FINEST, null, pEEEx);
             throw new PartMasterAlreadyExistsException(mLocale, pPartM);
         } catch (PersistenceException pPEx) {
             //EntityExistsException is case sensitive
             //whereas MySQL is not thus PersistenceException could be
             //thrown instead of EntityExistsException
-            LOGGER.log(Level.FINEST,null,pPEx);
+            LOGGER.log(Level.FINEST, null, pPEx);
             throw new CreationException(mLocale);
         }
     }
 
     public void removePartM(PartMaster pPartM) {
         PartRevisionDAO partRevisionDAO = new PartRevisionDAO(mLocale, em);
-        for(PartRevision partRevision:pPartM.getPartRevisions()){
+        for (PartRevision partRevision : pPartM.getPartRevisions()) {
             partRevisionDAO.removeRevision(partRevision);
         }
         em.remove(pPartM);
     }
 
-    public List<PartMaster> findPartMasters(String workspaceId, String partNumber, String partName, int maxResults){
+    public List<PartMaster> findPartMasters(String workspaceId, String partNumber, String partName, int maxResults) {
         return em.createNamedQuery("PartMaster.findByNameOrNumber", PartMaster.class)
-            .setParameter("partNumber", partNumber)
-            .setParameter("partName", partName)
-            .setParameter("workspaceId", workspaceId)
-            .setMaxResults(maxResults)
-            .getResultList();
+                .setParameter("partNumber", partNumber)
+                .setParameter("partName", partName)
+                .setParameter("workspaceId", workspaceId)
+                .setMaxResults(maxResults)
+                .getResultList();
     }
 
     public String findLatestPartMId(String pWorkspaceId, String pType) {
@@ -132,24 +134,32 @@ public class PartMasterDAO {
     }
 
     public long getDiskUsageForPartsInWorkspace(String pWorkspaceId) {
-        Number result = (Number)em.createNamedQuery("BinaryResource.diskUsageInPath")
-                .setParameter("path", pWorkspaceId+"/parts/%")
+        Number result = (Number) em.createNamedQuery("BinaryResource.diskUsageInPath")
+                .setParameter("path", pWorkspaceId + "/parts/%")
                 .getSingleResult();
 
         return result != null ? result.longValue() : 0L;
     }
 
     public long getDiskUsageForPartTemplatesInWorkspace(String pWorkspaceId) {
-        Number result = (Number)em.createNamedQuery("BinaryResource.diskUsageInPath")
-                .setParameter("path", pWorkspaceId+"/part-templates/%")
+        Number result = (Number) em.createNamedQuery("BinaryResource.diskUsageInPath")
+                .setParameter("path", pWorkspaceId + "/part-templates/%")
                 .getSingleResult();
 
         return result != null ? result.longValue() : 0L;
     }
 
     public List<PartMaster> getAllByWorkspace(String workspaceId) {
-        return em.createNamedQuery("PartMaster.findByWorkspace",PartMaster.class)
-                .setParameter("workspaceId",workspaceId)
+        return em.createNamedQuery("PartMaster.findByWorkspace", PartMaster.class)
+                .setParameter("workspaceId", workspaceId)
                 .getResultList();
+    }
+
+    public void validatePartMasterExistence(List<InstanceAttribute> pAttributes) throws PartMasterNotFoundException {
+        for (InstanceAttribute instanceAttribute : pAttributes) {
+            if (instanceAttribute instanceof InstancePartNumberAttribute) {
+                loadPartM(((InstancePartNumberAttribute) instanceAttribute).getValue().getKey());
+            }
+        }
     }
 }

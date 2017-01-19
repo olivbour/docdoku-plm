@@ -805,6 +805,7 @@ public class ProductManagerBean implements IProductManagerLocal {
             //should move that
             if (pAttributes != null) {
                 List<InstanceAttribute> currentAttrs = partRev.getLastIteration().getInstanceAttributes();
+                new PartMasterDAO(locale, em).validatePartMasterExistence(pAttributes);
                 boolean valid = AttributesConsistencyUtils.hasValidChange(pAttributes, partRev.isAttributesLocked(), currentAttrs);
                 if (!valid) {
                     throw new NotAllowedException(locale, "NotAllowedException59");
